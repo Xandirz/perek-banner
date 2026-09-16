@@ -182,28 +182,42 @@ function loadImage(file){
     const img = new Image();
     img.onload = ()=>res(img);
     img.onerror = ()=>rej(new Error('bad image'));
-    img.src = URL.createObjectURL(file);
+    img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
   });
 }
 
 // ── Баннер ─────────────────────────────────────────────
-$('#bannerInput').addEventListener('change', async e=>{
-  const f = e.target.files[0]; if(!f) return;
-  banner = await loadImage(f);
+function setBanner(img){
+  banner = img;
   $('#bannerImg').src = banner.src;
   $('#editorEmpty').style.display = 'none';
   $('#stage').style.display = 'inline-block';
   $('#bannerImg').onload = ()=>{ positionSlot(); render(); };
   if($('#bannerImg').complete){ positionSlot(); render(); }
+}
+$('#bannerInput').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  setBanner(await loadImage(f));
 });
 
 // ── Товары ─────────────────────────────────────────────
 $('#productInput').addEventListener('change', async e=>{
+  products = products.filter(p=>!p.sample);     // пример заменяется своими фото
   for(const f of e.target.files){
     try{ products.push({name:f.name, img: await loadImage(f)}); }catch(_){}
   }
   render();
 });
+
+// ── Пример по умолчанию: шаблон и товар из папки проекта ─
+(async ()=>{
+  try{
+    const [b, p] = await Promise.all([loadImage('шаблон.png'), loadImage('товар1.png')]);
+    if(!banner) setBanner(b);
+    if(products.length===0) products.push({name:'товар1.png', img:p, sample:true});
+    render();
+  }catch(_){}                                   // файлов нет — просто ждём загрузки вручную
+})();
 
 // ── Опции ──────────────────────────────────────────────
 $('#removeWhite').addEventListener('change', e=>{
@@ -295,12 +309,14 @@ function processProduct(img){
   const x = c.getContext('2d');
   x.drawImage(img,0,0);
   if(opts.removeWhite){
-    const d = x.getImageData(0,0,c.width,c.height);
-    const p = d.data, t = opts.tol;
-    for(let i=0;i<p.length;i+=4){
-      if(p[i]>=t && p[i+1]>=t && p[i+2]>=t) p[i+3]=0;
-    }
-    x.putImageData(d,0,0);
+    try{
+      const d = x.getImageData(0,0,c.width,c.height);
+      const p = d.data, t = opts.tol;
+      for(let i=0;i<p.length;i+=4){
+        if(p[i]>=t && p[i+1]>=t && p[i+2]>=t) p[i+3]=0;
+      }
+      x.putImageData(d,0,0);
+    }catch(_){ warnLocal(); }
   }
   img._processed = {key, canvas:c};
   return c;
@@ -328,7 +344,15 @@ function drawProduct(x, img, bw, bh){
   x.drawImage(src, -dw/2, -dh/2, dw, dh);
   x.restore();
 }
-function download(canvas, base){
+// страница открыта как file:// — браузер запрещает читать пиксели картинок из папки
+let warned = false;
+function warnLocal(){
+  if(warned) return; warned = true;
+  alert('Браузер не даёт обработать пример из папки, когда страница открыта как файл. ' +
+        'Загрузи шаблон и товар через кнопки выбора файлов (или открой страницу через локальный сервер).');
+}
+function download(canvas, base, batch){
+  try{ canvas.getContext('2d').getImageData(0,0,1,1); }catch(_){ if(!batch) warned = false; warnLocal(); return; }
   canvas.toBlob(b=>{
     const u = URL.createObjectURL(b);
     const a = document.createElement('a');
@@ -366,7 +390,8 @@ function render(){
   });
 }
 $('#downloadAll').addEventListener('click', ()=>{
-  products.forEach((p,i)=> setTimeout(()=>download(compose(p.img), p.name), i*400));
+  warned = false;
+  products.forEach((p,i)=> setTimeout(()=>download(compose(p.img), p.name, true), i*400));
 });
 </script>
 </body>
