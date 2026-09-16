@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Генератор баннеров</title>
+<style>
+  :root{
+    --bg:#f5f5f3; --panel:#ffffff; --edge:#e2e1dc; --ink:#1a1b1e; --muted:#6f6e6a;
+    --accent:#3a63f0; --accent-ink:#ffffff; --slot:#3a63f0; --drop:#ecebe6; --shadow:rgba(20,20,25,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141519; --panel:#1c1e24; --edge:#2c2f37; --ink:#eceae4; --muted:#9a9992;
+      --accent:#5b7dff; --accent-ink:#0b0d12; --slot:#7f9bff; --drop:#23262e; --shadow:rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141519; --panel:#1c1e24; --edge:#2c2f37; --ink:#eceae4; --muted:#9a9992;
+    --accent:#5b7dff; --accent-ink:#0b0d12; --slot:#7f9bff; --drop:#23262e; --shadow:rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.5;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:20px 16px 60px}
+  h1{font-size:20px; margin:0 0 2px; letter-spacing:-.01em}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 20px}
+  .grid{display:grid; grid-template-columns:280px 1fr; gap:18px; align-items:start}
+  @media(max-width:760px){ .grid{grid-template-columns:1fr} }
+  .panel{background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:16px; box-shadow:0 1px 3px var(--shadow)}
+  .panel h2{font-size:13px; font-weight:600; color:var(--muted); margin:0 0 12px; letter-spacing:.01em}
+  label.field{display:block; margin-bottom:16px}
+  label.field:last-child{margin-bottom:0}
+  .fn{font-size:14px; font-weight:500; margin-bottom:6px; display:block}
+  .hint{font-size:12px; color:var(--muted); margin-top:4px}
+  input[type=file]{width:100%; font-size:13px; color:var(--muted)}
+  input[type=file]::file-selector-button{
+    font:inherit; font-size:13px; padding:7px 12px; margin-right:10px; cursor:pointer;
+    border:1px solid var(--edge); border-radius:8px; background:var(--bg); color:var(--ink);
+  }
+  .row{display:flex; align-items:center; gap:8px; margin-bottom:12px}
+  .row:last-child{margin-bottom:0}
+  .row input[type=range]{flex:1; accent-color:var(--accent)}
+  .toggle{display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px}
+  .seg{display:inline-flex; border:1px solid var(--edge); border-radius:8px; overflow:hidden}
+  .seg button{font:inherit; font-size:13px; padding:6px 12px; border:0; background:var(--panel); color:var(--muted); cursor:pointer}
+  .seg button.on{background:var(--accent); color:var(--accent-ink)}
+  .val{font-size:12px; color:var(--muted); width:42px; text-align:right; font-variant-numeric:tabular-nums}
+  .stage-panel{min-height:200px}
+  .stage{position:relative; display:inline-block; max-width:100%; line-height:0; user-select:none; touch-action:none}
+  .stage img{max-width:100%; height:auto; display:block; border-radius:6px}
+  .slot{position:absolute; border:2px solid var(--slot); background:rgba(90,125,255,.12); cursor:move; box-shadow:0 0 0 1px rgba(255,255,255,.4)}
+  .slot .handle{position:absolute; right:-7px; bottom:-7px; width:14px; height:14px; background:var(--slot); border:2px solid #fff; border-radius:3px; cursor:nwse-resize}
+  .slot.filled{background:transparent}
+  .live{position:absolute; left:0; top:0; pointer-events:none; border-radius:6px}
+  .slot .tag{position:absolute; top:-22px; left:0; font-size:11px; background:var(--slot); color:#fff; padding:1px 6px; border-radius:5px; white-space:nowrap; line-height:1.6}
+  .empty{display:flex; align-items:center; justify-content:center; min-height:220px; border:2px dashed var(--edge); border-radius:10px; color:var(--muted); font-size:14px; text-align:center; padding:20px; background:var(--drop)}
+  .results{margin-top:20px}
+  .results h2{font-size:13px; font-weight:600; color:var(--muted); margin:0 0 12px}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px}
+  .card{background:var(--panel); border:1px solid var(--edge); border-radius:10px; padding:10px; box-shadow:0 1px 3px var(--shadow)}
+  .card canvas{width:100%; height:auto; border-radius:6px; display:block; background:
+    linear-gradient(45deg,var(--edge) 25%,transparent 25%,transparent 75%,var(--edge) 75%) 0 0/16px 16px,
+    linear-gradient(45deg,var(--edge) 25%,transparent 25%,transparent 75%,var(--edge) 75%) 8px 8px/16px 16px}
+  .card .name{font-size:12px; color:var(--muted); margin:8px 0; word-break:break-all}
+  .btn{font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--edge); background:var(--panel); color:var(--ink); padding:7px 12px; font-size:13px; font-weight:500}
+  .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .card .btn{width:100%}
+  .card{cursor:pointer}
+  .card.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent)}
+  .bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Генератор баннеров</h1>
+  <p class="sub">Загрузи чистый баннер, поставь рамку под товар и кидай фото — на каждый товар выйдет готовый баннер.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Настройки</h2>
+
+      <label class="field">
+        <span class="fn">1. Чистый баннер</span>
+        <input type="file" id="bannerInput" accept="image/*">
+      </label>
+
+      <label class="field">
+        <span class="fn">2. Фото товаров</span>
+        <input type="file" id="productInput" accept="image/*" multiple>
+        <span class="hint">Можно выбрать сразу несколько.</span>
+      </label>
+
+      <div class="field">
+        <span class="fn">3. Опции</span>
+        <label class="toggle" style="margin-bottom:12px">
+          <input type="checkbox" id="removeWhite"> Убрать белый фон у товара
+        </label>
+        <div class="row" id="tolRow" style="opacity:.4; pointer-events:none">
+          <span class="hint" style="width:88px; margin:0">Порог белого</span>
+          <input type="range" id="tol" min="180" max="255" value="240">
+        </div>
+        <div class="row" style="margin-top:6px">
+          <span class="hint" style="width:88px; margin:0">Вписывание</span>
+          <div class="seg" id="fitSeg">
+            <button data-fit="contain" class="on">Целиком</button>
+            <button data-fit="cover">Заполнить</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span class="hint" style="width:88px; margin:0">Масштаб</span>
+          <input type="range" id="scale" min="20" max="200" value="100">
+          <span class="val" id="scaleVal">100%</span>
+        </div>
+        <div class="row">
+          <span class="hint" style="width:88px; margin:0">Наклон</span>
+          <input type="range" id="rotate" min="-45" max="45" value="0">
+          <span class="val" id="rotateVal">0°</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel stage-panel">
+      <h2>Место под товар — перетащи рамку, тяни угол для размера</h2>
+      <div id="editor">
+        <div class="empty" id="editorEmpty">Загрузи чистый баннер, чтобы начать</div>
+        <div class="stage" id="stage" style="display:none">
+          <img id="bannerImg" alt="Баннер">
+          <canvas class="live" id="live"></canvas>
+          <div class="slot" id="slot"><span class="tag">товар</span><div class="handle" id="handle"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="bar">
+      <h2 style="margin:0">Готовые баннеры</h2>
+      <button class="btn primary" id="downloadAll" style="display:none">Скачать все</button>
+    </div>
+    <div class="cards" id="cards">
+      <div class="empty" style="grid-column:1/-1">Здесь появятся баннеры с подставленными товарами</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let banner = null;
+let products = [];
+let active = 0;                                 // товар, показанный в редакторе
+let slot = {x:.3, y:.3, w:.4, h:.4};           // доли от баннера
+let opts = {removeWhite:false, tol:240, fit:'contain', scale:1, rotate:0};
+
+// восстановить настройки
+try{
+  const s = JSON.parse(localStorage.getItem('bm_state')||'{}');
+  if(s.slot) slot = s.slot;
+  if(s.opts) opts = Object.assign(opts, s.opts);
+}catch(e){}
+
+function saveState(){
+  try{ localStorage.setItem('bm_state', JSON.stringify({slot, opts})); }catch(e){}
+}
+
+// применить восстановленные опции к UI
+$('#removeWhite').checked = opts.removeWhite;
+$('#tol').value = opts.tol;
+$('#tolRow').style.opacity = opts.removeWhite ? 1 : .4;
+$('#tolRow').style.pointerEvents = opts.removeWhite ? 'auto' : 'none';
+document.querySelectorAll('#fitSeg button').forEach(b=>b.classList.toggle('on', b.dataset.fit===opts.fit));
+$('#scale').value = Math.round(opts.scale*100);
+$('#scaleVal').textContent = Math.round(opts.scale*100) + '%';
+$('#rotate').value = opts.rotate;
+$('#rotateVal').textContent = opts.rotate + '°';
+
+function loadImage(file){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    img.onload = ()=>res(img);
+    img.onerror = ()=>rej(new Error('bad image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ── Баннер ─────────────────────────────────────────────
+$('#bannerInput').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  banner = await loadImage(f);
+  $('#bannerImg').src = banner.src;
+  $('#editorEmpty').style.display = 'none';
+  $('#stage').style.display = 'inline-block';
+  $('#bannerImg').onload = ()=>{ positionSlot(); render(); };
+  if($('#bannerImg').complete){ positionSlot(); render(); }
+});
+
+// ── Товары ─────────────────────────────────────────────
+$('#productInput').addEventListener('change', async e=>{
+  for(const f of e.target.files){
+    try{ products.push({name:f.name, img: await loadImage(f)}); }catch(_){}
+  }
+  render();
+});
+
+// ── Опции ──────────────────────────────────────────────
+$('#removeWhite').addEventListener('change', e=>{
+  opts.removeWhite = e.target.checked;
+  $('#tolRow').style.opacity = opts.removeWhite ? 1 : .4;
+  $('#tolRow').style.pointerEvents = opts.removeWhite ? 'auto' : 'none';
+  saveState(); render();
+});
+$('#tol').addEventListener('input', e=>{ opts.tol = +e.target.value; saveState(); render(); });
+$('#fitSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  opts.fit = b.dataset.fit;
+  document.querySelectorAll('#fitSeg button').forEach(x=>x.classList.toggle('on', x===b));
+  saveState(); render();
+});
+
+let raf = null;
+function scheduleRender(){ if(raf) return; raf = requestAnimationFrame(()=>{ raf=null; render(); }); }
+
+$('#scale').addEventListener('input', e=>{
+  opts.scale = +e.target.value/100;
+  $('#scaleVal').textContent = e.target.value + '%';
+  scheduleRender();
+});
+$('#rotate').addEventListener('input', e=>{
+  opts.rotate = +e.target.value;
+  $('#rotateVal').textContent = e.target.value + '°';
+  scheduleRender();
+});
+$('#scale').addEventListener('change', saveState);
+$('#rotate').addEventListener('change', saveState);
+
+// ── Рамка-слот: позиция и перетаскивание ───────────────
+function positionSlot(){
+  const img = $('#bannerImg');
+  const el = $('#slot');
+  el.style.left   = slot.x*img.clientWidth + 'px';
+  el.style.top    = slot.y*img.clientHeight + 'px';
+  el.style.width  = slot.w*img.clientWidth + 'px';
+  el.style.height = slot.h*img.clientHeight + 'px';
+  drawLive();
+}
+
+// товар прямо на баннере в редакторе
+function drawLive(){
+  const img = $('#bannerImg'), c = $('#live');
+  const p = products[active];
+  $('#slot').classList.toggle('filled', !!p);
+  const w = img.clientWidth, h = img.clientHeight, dpr = window.devicePixelRatio || 1;
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+  if(!banner || !p || !w) return;
+  const x = c.getContext('2d');
+  x.scale(c.width/banner.naturalWidth, c.height/banner.naturalHeight);
+  drawProduct(x, p.img, banner.naturalWidth, banner.naturalHeight);
+}
+window.addEventListener('resize', ()=>{ if(banner) positionSlot(); });
+
+let drag = null;
+$('#slot').addEventListener('pointerdown', e=>{
+  const img = $('#bannerImg');
+  const resizing = e.target.id === 'handle';
+  drag = {resizing, sx:e.clientX, sy:e.clientY, slot:{...slot}, iw:img.clientWidth, ih:img.clientHeight};
+  e.target.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+$('#slot').addEventListener('pointermove', e=>{
+  if(!drag) return;
+  const dx = (e.clientX - drag.sx)/drag.iw;
+  const dy = (e.clientY - drag.sy)/drag.ih;
+  if(drag.resizing){
+    slot.w = Math.min(1-slot.x, Math.max(.05, drag.slot.w + dx));
+    slot.h = Math.min(1-slot.y, Math.max(.05, drag.slot.h + dy));
+  }else{
+    slot.x = Math.min(1-slot.w, Math.max(0, drag.slot.x + dx));
+    slot.y = Math.min(1-slot.h, Math.max(0, drag.slot.y + dy));
+  }
+  positionSlot();
+});
+$('#slot').addEventListener('pointerup', ()=>{ if(drag){ drag=null; saveState(); render(); }});
+$('#slot').addEventListener('pointercancel', ()=>{ if(drag){ drag=null; saveState(); render(); }});
+
+// ── Обработка и сборка ─────────────────────────────────
+function processProduct(img){
+  const key = opts.removeWhite ? 'w' + opts.tol : 'raw';
+  if(img._processed && img._processed.key === key) return img._processed.canvas;
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext('2d');
+  x.drawImage(img,0,0);
+  if(opts.removeWhite){
+    const d = x.getImageData(0,0,c.width,c.height);
+    const p = d.data, t = opts.tol;
+    for(let i=0;i<p.length;i+=4){
+      if(p[i]>=t && p[i+1]>=t && p[i+2]>=t) p[i+3]=0;
+    }
+    x.putImageData(d,0,0);
+  }
+  img._processed = {key, canvas:c};
+  return c;
+}
+function compose(img){
+  const bw = banner.naturalWidth, bh = banner.naturalHeight;
+  const c = document.createElement('canvas'); c.width=bw; c.height=bh;
+  const x = c.getContext('2d');
+  x.drawImage(banner,0,0);
+  drawProduct(x, img, bw, bh);
+  return c;
+}
+function drawProduct(x, img, bw, bh){
+  const src = processProduct(img);
+  const sw=src.width, sh=src.height;
+  const sx=slot.x*bw, sy=slot.y*bh, sW=slot.w*bw, sH=slot.h*bh;
+  const base = opts.fit==='cover' ? Math.max(sW/sw, sH/sh) : Math.min(sW/sw, sH/sh);
+  const scale = base * opts.scale;
+  const dw=sw*scale, dh=sh*scale;
+  const cx = sx + sW/2, cy = sy + sH/2;
+  x.save();
+  if(opts.fit==='cover'){ x.beginPath(); x.rect(sx,sy,sW,sH); x.clip(); }
+  x.translate(cx, cy);
+  x.rotate(opts.rotate * Math.PI/180);
+  x.drawImage(src, -dw/2, -dh/2, dw, dh);
+  x.restore();
+}
+function download(canvas, base){
+  canvas.toBlob(b=>{
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = u; a.download = base.replace(/\.[^.]+$/,'') + '_banner.png';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(u), 2000);
+  },'image/png');
+}
+
+function render(){
+  const cards = $('#cards');
+  cards.innerHTML = '';
+  if(active >= products.length) active = 0;
+  if(banner) drawLive();
+  if(!banner){ cards.innerHTML = '<div class="empty" style="grid-column:1/-1">Сначала загрузи баннер</div>'; $('#downloadAll').style.display='none'; return; }
+  if(products.length===0){ cards.innerHTML = '<div class="empty" style="grid-column:1/-1">Загрузи фото товаров — баннеры появятся здесь</div>'; $('#downloadAll').style.display='none'; return; }
+  $('#downloadAll').style.display = 'inline-block';
+  products.forEach((p,i)=>{
+    const canvas = compose(p.img);
+    const card = document.createElement('div'); card.className='card' + (i===active ? ' active' : '');
+    card.title = 'Показать в редакторе';
+    card.onclick = ()=>{
+      active = i;
+      cards.querySelectorAll('.card').forEach((el,j)=>el.classList.toggle('active', j===i));
+      drawLive();
+    };
+    const preview = document.createElement('canvas');
+    preview.width = canvas.width; preview.height = canvas.height;
+    preview.getContext('2d').drawImage(canvas,0,0);
+    const name = document.createElement('div'); name.className='name'; name.textContent = p.name;
+    const btn = document.createElement('button'); btn.className='btn primary'; btn.textContent='Скачать PNG';
+    btn.onclick = e=>{ e.stopPropagation(); download(canvas, p.name); };
+    card.append(preview, name, btn);
+    cards.append(card);
+  });
+}
+$('#downloadAll').addEventListener('click', ()=>{
+  products.forEach((p,i)=> setTimeout(()=>download(compose(p.img), p.name), i*400));
+});
+</script>
+</body>
+</html>
